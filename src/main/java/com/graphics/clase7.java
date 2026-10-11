@@ -1,6 +1,8 @@
 
 package com.graphics; // Menu de inicio sobre la ciudad de las seis clases anteriores.
 
+import java.awt.Color; // Elige el color de cada letra del menú.
+
 import static org.lwjgl.glfw.GLFW.*; // Teclas W, flecha arriba y titulo de la ventana.
 import static org.lwjgl.opengl.GL33.*; // Recorte, limpieza y viewport del recuadro del menu.
 
@@ -12,16 +14,20 @@ import static org.lwjgl.opengl.GL33.*; // Recorte, limpieza y viewport del recua
  * Al arrancar muestra la ciudad de fondo con un recuadro central que dice
  * MENU, controles y PULSA W. El auto no se mueve hasta pulsar W o flecha
  * arriba (^). Todo el menu queda dentro de esta clase.
- * Orden de lectura: estado, teclado, actualizacion, recuadro, contenido,
- * texto, letras y punto de entrada.
+ * El fondo del recuadro se limpia con scissor como en el panel; las letras ya
+ * no son una fuente de puntos: se escriben con {@link Texto2D}, la misma
+ * fuente real con suavizado del panel de clase6, así que ya no se ven
+ * pixeladas.
+ * Orden de lectura: estado, teclado, actualizacion, recuadro, contenido y
+ * punto de entrada.
  */
 public class clase7 extends clase6 {
 
     // ==================== 1. ESTADO DEL MENU ====================
 
     private boolean enMenu = true; // true: muestra menu y bloquea conduccion; false: juega normal.
-    private static final float PIXEL_MENU = 0.9f; // Punto de la fuente del menu: chico para que quepa en 110 unidades.
-    private static final float ALTURA_MENU = 55; // Altura Y de las letras del menu.
+
+    private Texto2D menuTexto; // Lienzo de letras con fuente real; se crea en el primer cuadro con contexto OpenGL.
 
     // ==================== 2. TECLADO ====================
 
@@ -57,8 +63,7 @@ public class clase7 extends clase6 {
             super.actualizar(0); // Refresca el titulo con los controles de conduccion.
             return;
         }
-        glfwSetWindowTitle(ventana, "Clase 7 | MENU | Pulsa W o flecha arriba (^) para empezar"); // Aviso fijo en el
-                                                                                                  // menu.
+        glfwSetWindowTitle(ventana, "Clase 7 | MENU"); // Título fijo en el menú; la orden ya está dentro del recuadro.
     }
 
     // ==================== 4. RECUADRO CENTRAL ====================
@@ -74,13 +79,17 @@ public class clase7 extends clase6 {
 
     /** Recorta un rectangulo al centro y dibuja el contenido del menu. */
     private void dibujarMenu() {
-        int menuW = Math.min(980, (int) (ancho * 0.96)); // Un poco mas ancho, casi todo el ancho.
+        int menuW = Math.min(800, (int) (ancho * 0.80)); // Más angosto: menos fondo a los lados, texto centrado igual.
         int menuH = Math.min(530, (int) (alto * 0.88)); // Un poco mas alto, deja poco borde de ciudad.
         if (menuW < 300 || menuH < 200) { // Ventana demasiado pequena: el texto no cabria.
             return; // Omite el recuadro antes que dibujarlo ilegible.
         }
         int x = (ancho - menuW) / 2; // Centra en horizontal.
         int y = (alto - menuH) / 2; // Centra en vertical; OpenGL mide Y desde abajo.
+        if (menuTexto == null) { // El primer cuadro es también el primero con contexto OpenGL.
+            menuTexto = new Texto2D(); // Crea el shader, el quad y la textura del texto.
+        }
+        menuTexto.redimensionar(menuW, menuH); // Ajusta el lienzo al recuadro; no hace nada si no cambió.
         glEnable(GL_SCISSOR_TEST); // Activa el recorte para no borrar la ciudad de alrededor.
         glScissor(x - 12, y - 12, menuW + 24, menuH + 24); // Selecciona el menu mas un borde de doce pixeles.
         glClearColor(0.8f, 0.87f, 0.94f, 1); // Mismo marco claro del minimapa y del panel.
@@ -88,11 +97,12 @@ public class clase7 extends clase6 {
         glScissor(x, y, menuW, menuH); // Reduce el recorte al interior del menu.
         glClearColor(0.05f, 0.08f, 0.13f, 1); // Fondo oscuro para que el texto blanco se lea.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Limpia color y profundidad del interior.
-        glViewport(x, y, menuW, menuH); // Redirige la proyeccion al recuadro centrado.
+        glViewport(x, y, menuW, menuH); // Redirige la proyección al recuadro centrado.
         entero("uMapa", 1); // Colores planos como en el minimapa, sin iluminacion.
         decimal("uLimite", LIMITE); // El shader ortografico espera el limite real del mapa.
         try { // Asegura que la ventana completa se restaure aunque falle el menu.
-            dibujarContenidoMenu(); // Titulo, controles y aviso de pulsar W.
+            dibujarContenidoMenu(menuW, menuH); // Escribe el titulo y los avisos sobre el lienzo.
+            menuTexto.dibujar(x, y, ancho, alto); // Pega las letras encima del recuadro ya pintado.
         } finally { // El siguiente cuadro debe volver a pantalla completa.
             entero("uMapa", 0); // Recupera la perspectiva de la escena principal.
             glDisable(GL_SCISSOR_TEST); // Permite que la proxima limpieza abarque todo.
@@ -103,158 +113,49 @@ public class clase7 extends clase6 {
         }
     }
 
-    // ==================== 5. CONTENIDO ====================
-
-    /** Dibuja titulo y aviso parpadeante dentro del recuadro, todo centrado. */
-    private void dibujarContenidoMenu() {
-        caja(0, 30, 0, 110, 1, 110, 0.05f, 0.08f, 0.13f); // Rellena el recuadro; el clear ya lo pinto, la caja lo fija.
-        dibujarTextoCentrado("DELIVERY", -38, 1.5f, 0.55f, 0.75f, 0.95f); // Titulo azul claro, grande en dos lineas.
-        dibujarTextoCentrado("EN LA CIUDAD", -20, 1.3f, 0.55f, 0.75f, 0.95f); // Segunda parte del titulo.
-        if ((tiempo % 1.0f) < 0.7f) { // Parpadea cada segundo para llamar la atencion.
-            dibujarTextoCentrado("COMENZAR -> W o ^", 6, 0.85f, 1, 1, 1); // Orden blanca para empezar.
+    /** Libera también la textura de las letras del menú al cerrar la aplicación. */
+    @Override // Añade la limpieza del menú a la del panel.
+    protected void limpiar() {
+        if (menuTexto != null) { // Solo hace falta si el menú llegó a crearse.
+            menuTexto.liberar(); // Devuelve a la GPU lo que ocupa el texto.
         }
-        dibujarTextoCentrado("SALIR -> ESC", 24, 0.6f, 1, 1, 1); // Aviso fijo, no parpadea.
+        super.limpiar(); // Ejecuta la limpieza del panel y de la ciudad.
     }
 
-    /** Calcula el ancho y centra la cadena en X antes de dibujarla. */
-    private void dibujarTextoCentrado(String texto, float z0, float pixel, float r, float g, float b) {
-        float anchoTexto = texto.length() * 6 * pixel - pixel; // Todos los caracteres avanzan 6 pixeles.
-        dibujarTextoMenu(texto, -anchoTexto / 2, z0, pixel, r, g, b); // x0 centrado en el recuadro.
+    // ==================== 5. CONTENIDO CON FUENTE REAL ====================
+
+    /*
+     * Las cuatro líneas conservan las posiciones del menú anterior: cada z0 era la
+     * parte alta de la letra en mundo (-38, -20, 6 y 24), así que la línea base en
+     * píxeles es esa altura más el alto de la fuente. Los tamaños crecen con el
+     * alto del recuadro para que el menú se lea igual en ventanas grandes y chicas.
+     */
+
+    /** Escribe el titulo y los avisos sobre el lienzo, todo centrado. */
+    private void dibujarContenidoMenu(int menuW, int menuH) {
+        menuTexto.limpiar(); // Borra las letras del cuadro anterior antes de escribir las nuevas.
+        int titulo = Math.max(24, menuH / 8); // DELIVERY grande: 66 px con el recuadro al máximo.
+        int subtitulo = Math.max(20, menuH / 9); // EN LA CIUDAD un poco menor: 58 px al máximo.
+        int comenzar = Math.max(16, menuH / 13); // COMENZAR mediano: 40 px al máximo.
+        int salir = Math.max(14, menuH / 17); // SALIR más chico: 31 px al máximo.
+        Color azul = new Color(140, 191, 242); // Mismo azul claro del título del panel.
+        menuTexto.textoCentrado("DELIVERY", menuW / 2, baseMenu(-38, menuH, titulo), titulo, azul); // Título azul claro.
+        menuTexto.textoCentrado("EN LA CIUDAD", menuW / 2, baseMenu(-20, menuH, subtitulo), subtitulo, azul); // Segunda
+                                                                                                             // parte.
+        if ((tiempo % 1.0f) < 0.7f) { // Parpadea cada segundo para llamar la atención.
+            menuTexto.textoCentrado("COMENZAR -> W o ^", menuW / 2, baseMenu(6, menuH, comenzar), comenzar,
+                    Color.WHITE); // Orden blanca para empezar.
+        }
+        menuTexto.textoCentrado("SALIR -> ESC", menuW / 2, baseMenu(24, menuH, salir), salir, Color.WHITE); // Aviso fijo.
     }
 
-    // ==================== 6. TEXTO CON CAJAS ====================
-
-    /** Dibuja una cadena con la fuente 5x7 desde su esquina superior izquierda. */
-    private void dibujarTextoMenu(String texto, float x0, float z0, float pixel, float r, float g, float b) {
-        float cursorX = x0; // Posicion horizontal del caracter actual.
-        for (int indice = 0; indice < texto.length(); indice++) { // Recorre la cadena letra por letra.
-            char letra = texto.charAt(indice); // Caracter actual.
-            if (letra == ' ') { // El espacio solo avanza el cursor.
-                cursorX += 6 * pixel; // Ancho de un caracter 5x7 mas su separacion.
-                continue; // Pasa a la siguiente letra.
-            }
-            boolean[][] puntos = glifoMenu(letra); // Matriz de 7 filas por 5 columnas, incluye la flecha ^.
-            int ancho = puntos[0].length; // Todas las letras usan 5 columnas.
-            for (int fila = 0; fila < puntos.length; fila++) { // Recorre las filas de arriba a abajo.
-                for (int columna = 0; columna < ancho; columna++) { // Recorre las columnas de la letra.
-                    if (!puntos[fila][columna]) { // Punto apagado de la fuente.
-                        continue; // No dibuja nada en esa celda.
-                    }
-                    float px = cursorX + columna * pixel; // X del punto dentro del caracter.
-                    float pz = z0 + fila * pixel; // Z del punto; hacia abajo en el menu.
-                    caja(px, ALTURA_MENU, pz, pixel * 1.05f, 0.6f, pixel * 1.05f, r, g, b); // Punto levemente solapado:
-                                                                                            // trazo solido.
-                }
-            }
-            cursorX += (ancho + 1) * pixel; // Avanza segun el ancho real mas su separacion.
-        }
-    }
-
-    /** Devuelve la matriz 7x5 de una letra, digito o simbolo del menu. */
-    private static boolean[][] glifoMenu(char letra) {
-        String[] filas; // Siete cadenas de cinco caracteres con X encendido y . apagado.
-        switch (Character.toUpperCase(letra)) { // Acepta minusculas aunque el menu usa mayusculas.
-            case 'A':
-                filas = new String[] { ".XXX.", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X" };
-                break;
-            case 'B':
-                filas = new String[] { "XXXX.", "X...X", "X...X", "XXXX.", "X...X", "X...X", "XXXX." };
-                break;
-            case 'C':
-                filas = new String[] { ".XXXX", "X....", "X....", "X....", "X....", "X....", ".XXXX" };
-                break;
-            case 'D':
-                filas = new String[] { "XXX..", "X..X.", "X...X", "X...X", "X...X", "X..X.", "XXX.." };
-                break;
-            case 'E':
-                filas = new String[] { "XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "XXXXX" };
-                break;
-            case 'F':
-                filas = new String[] { "XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "X...." };
-                break;
-            case 'G':
-                filas = new String[] { ".XXXX", "X....", "X....", "X.XXX", "X...X", "X...X", ".XXX." };
-                break;
-            case 'H':
-                filas = new String[] { "X...X", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X" };
-                break;
-            case 'I':
-                filas = new String[] { "XXXXX", "..X..", "..X..", "..X..", "..X..", "..X..", "XXXXX" };
-                break;
-            case 'J':
-                filas = new String[] { "..XXX", "...X.", "...X.", "...X.", "...X.", "X..X.", ".XX.." };
-                break;
-            case 'K':
-                filas = new String[] { "X...X", "X..X.", "X.X..", "XX...", "X.X..", "X..X.", "X...X" };
-                break;
-            case 'L':
-                filas = new String[] { "X....", "X....", "X....", "X....", "X....", "X....", "XXXXX" };
-                break;
-            case 'M':
-                filas = new String[] { "X...X", "XX.XX", "X.X.X", "X.X.X", "X...X", "X...X", "X...X" };
-                break;
-            case 'N':
-                filas = new String[] { "X...X", "XX..X", "XX..X", "X.X.X", "X..XX", "X..XX", "X...X" };
-                break;
-            case 'O':
-                filas = new String[] { ".XXX.", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX." };
-                break;
-            case 'P':
-                filas = new String[] { "XXXX.", "X...X", "X...X", "XXXX.", "X....", "X....", "X...." };
-                break;
-            case 'Q':
-                filas = new String[] { ".XXX.", "X...X", "X...X", "X...X", "X.X.X", "X..X.", ".XX.X" };
-                break;
-            case 'R':
-                filas = new String[] { "XXXX.", "X...X", "X...X", "XXXX.", "X.X..", "X..X.", "X...X" };
-                break;
-            case 'S':
-                filas = new String[] { ".XXXX", "X....", "X....", ".XXX.", "....X", "....X", "XXXX." };
-                break;
-            case 'T':
-                filas = new String[] { "XXXXX", "..X..", "..X..", "..X..", "..X..", "..X..", "..X.." };
-                break;
-            case 'U':
-                filas = new String[] { "X...X", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX." };
-                break;
-            case 'V':
-                filas = new String[] { "X...X", "X...X", "X...X", "X...X", "X...X", ".X.X.", "..X.." };
-                break;
-            case 'W':
-                filas = new String[] { "X...X", "X...X", "X...X", "X.X.X", "X.X.X", "XX.XX", "X...X" };
-                break;
-            case 'X':
-                filas = new String[] { "X...X", "X...X", ".X.X.", "..X..", ".X.X.", "X...X", "X...X" };
-                break;
-            case 'Y':
-                filas = new String[] { "X...X", "X...X", ".X.X.", "..X..", "..X..", "..X..", "..X.." };
-                break;
-            case 'Z':
-                filas = new String[] { "XXXXX", "....X", "...X.", "..X..", ".X...", "X....", "XXXXX" };
-                break;
-            case '/':
-                filas = new String[] { "....X", "....X", "...X.", "..X..", "..X..", ".X...", "X...." };
-                break;
-            case '-':
-                filas = new String[] { ".....", ".....", ".....", "XXXXX", ".....", ".....", "....." };
-                break;
-            case '>':
-                filas = new String[] { "X....", ".X...", "..X..", "...X.", "..X..", ".X...", "X...." };
-                break;
-            case '^': // Acento circunflejo: V volcada, sin cuerpo de flecha.
-                filas = new String[] { "..X..", ".X.X.", "X...X", ".....", ".....", ".....", "....." };
-                break;
-            default:
-                filas = new String[] { "XXXXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX" };
-                break; // Signo raro: bloque lleno.
-        }
-        boolean[][] puntos = new boolean[filas.length][filas[0].length()]; // Matriz de salida con el alto y ancho real.
-        for (int fila = 0; fila < filas.length; fila++) { // Convierte cada cadena en booleanos.
-            for (int columna = 0; columna < filas[0].length(); columna++) { // Revisa todos los puntos de la fila.
-                puntos[fila][columna] = filas[fila].charAt(columna) == 'X'; // X significa punto encendido.
-            }
-        }
-        return puntos; // Devuelve la letra lista para dibujar.
+    /**
+     * Convierte la parte alta de una línea en mundo a su línea base en píxeles: la
+     * altura en mundo sobre el borde superior más el alto de la fuente real.
+     */
+    private static int baseMenu(float z0, int menuH, int tamano) {
+        int arriba = Math.round((z0 + LIMITE) / (2f * LIMITE) * menuH); // Píxeles desde arriba hasta la parte alta.
+        return arriba + Math.round(tamano * 0.9f); // Baja el alto de la fuente para llegar a la línea base.
     }
 
     /** Punto de entrada de la septima leccion. */

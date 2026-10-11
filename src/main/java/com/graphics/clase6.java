@@ -1,5 +1,7 @@
 package com.graphics; // Continúa la serie junto a las cinco clases anteriores.
 
+import java.awt.Color; // Elige el color de cada letra del panel.
+
 import static org.lwjgl.opengl.GL33.*; // Permite recortar, limpiar y redirigir el recuadro del panel.
 
 /**
@@ -11,11 +13,13 @@ import static org.lwjgl.opengl.GL33.*; // Permite recortar, limpiar y redirigir 
  * del mismo pase OpenGL, con tres filas: velocidad del auto rojo en km/h con
  * barra proporcional, estado de los faros (ON u OFF) y hora del día (DIA o
  * NOCHE). Todo queda dentro de un único recuadro para no tapar la ciudad.
- * El panel se dibuja con las mismas cajas del proyecto sobre un viewport
- * cuadrado recortado con scissor, igual que el minimapa de clase4 pero abajo
- * a la derecha. Las letras son una fuente 3x5 dibujada con cajas pequeñas,
- * porque el proyecto no usa texturas ni bibliotecas de texto.
- * Orden de lectura: recuadro, fondo y filas, texto, letras y punto de entrada.
+ * El fondo del recuadro, la barra y las lámparas siguen dibujándose con las
+ * cajas del proyecto sobre un viewport cuadrado recortado con scissor, igual
+ * que el minimapa de clase4 pero abajo a la derecha. Las letras ya no son una
+ * fuente de puntos: se escriben con {@link Texto2D}, que usa una fuente real
+ * del sistema con suavizado y la pega como textura, así que ya no se ven
+ * pixeladas.
+ * Orden de lectura: recuadro, fondo y filas, texto y punto de entrada.
  */
 public class clase6 extends clase5 {
 
@@ -23,8 +27,11 @@ public class clase6 extends clase5 {
 
     private static final int LADO_MAXIMO = 230; // Lado del panel en píxeles: agrandado para la N de 5 puntos.
     private static final int MARGEN = 12; // Separación respecto a los bordes derecho e inferior.
-    private static final float PIXEL_LETRA = 1.3f; // Punto fino de la fuente 5x7: solo afecta al panel.
-    private static final float ALTURA_TEXTO = 55; // Altura Y de las letras: la más alta para quedar por encima.
+    private static final float TAMANO_TITULO = 20f; // Altura de la fuente del texto, en puntos de pantalla.
+    private static final float TAMANO_PANEL = 24f; // Título un poco más grande que las filas, sin exagerar.
+
+    private Texto2D texto; // Lienzo de letras con fuente real; se crea en el primer cuadro con contexto OpenGL.
+    private int ladoPanel; // Lado en píxeles del recuadro del último cuadro, para convertir coordenadas.
 
     // ==================== 2. RECUADRO INFERIOR DERECHO ====================
 
@@ -41,20 +48,33 @@ public class clase6 extends clase5 {
         if (lado < 120) { // Ventana demasiado pequeña: el texto no cabría.
             return; // Omite el panel antes que dibujarlo ilegible.
         }
+        ladoPanel = lado; // Guarda el lado para poder convertir de coordenadas del panel a píxeles.
+        // El contenido termina en la lámpara de HORA (z = 26); debajo solo quedaba fondo vacío,
+        // así que se recorta por abajo hasta z = 40 y se deja poco margen. La proyección sigue
+        // cuadrada para no deformar nada: lo de abajo simplemente queda fuera del recorte.
+        int recorte = Math.round((LIMITE - 40) / (2f * LIMITE) * lado); // Píxeles vacíos que se quitan abajo.
+        int altoRecorte = lado - recorte; // Altura visible del panel.
+        int extra = Math.round(TAMANO_PANEL * 0.9f); // Aire sobre el título, parecido al que queda bajo HORA.
+        int altoPanel = altoRecorte + extra; // Altura final con el aire de arriba incluido.
         int x = ancho - lado - MARGEN; // Esquina derecha con margen.
-        int y = MARGEN; // Esquina inferior con margen; OpenGL mide Y desde abajo.
+        int y = MARGEN - recorte; // Viewport cuadrado hundido: el borde visible queda a MARGEN del fondo.
+        if (texto == null) { // El primer cuadro es también el primero con contexto OpenGL.
+            texto = new Texto2D(); // Crea el shader, el quad y la textura del texto.
+        }
+        texto.redimensionar(lado); // Ajusta el lienzo al lado del recuadro; no hace nada si no cambió.
         glEnable(GL_SCISSOR_TEST); // Activa el recorte para no borrar la ciudad.
-        glScissor(x - 2, y - 2, lado + 4, lado + 4); // Selecciona el panel más un borde de dos píxeles.
+        glScissor(x - 2, y + recorte - 2, lado + 4, altoPanel + 4); // Marco con el aire de arriba incluido.
         glClearColor(0.8f, 0.87f, 0.94f, 1); // Mismo marco claro del minimapa.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Borra solo el marco gracias al scissor.
-        glScissor(x, y, lado, lado); // Reduce el recorte al interior del panel.
+        glScissor(x, y + recorte, lado, altoPanel); // Interior con el aire de arriba incluido.
         glClearColor(0.05f, 0.08f, 0.13f, 1); // Fondo oscuro para que el texto blanco se lea.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Limpia color y profundidad del interior.
-        glViewport(x, y, lado, lado); // Redirige la proyección al recuadro cuadrado.
+        glViewport(x, y, lado, lado); // Proyección cuadrada de siempre; lo recortado queda fuera y no se ve.
         entero("uMapa", 1); // Colores planos como en el minimapa, sin iluminación.
         decimal("uLimite", LIMITE); // El shader ortográfico espera el límite real del mapa.
         try { // Asegura que la ventana completa se restaure aunque falle el panel.
             dibujarContenido(); // Fondo, barra, lámparas y letras del panel.
+            texto.dibujar(x, y, ancho, alto); // Pega las letras encima del recuadro ya pintado.
         } finally { // El siguiente cuadro debe volver a pantalla completa.
             entero("uMapa", 0); // Recupera la perspectiva de la escena principal.
             glDisable(GL_SCISSOR_TEST); // Permite que la próxima limpieza abarque todo.
@@ -65,12 +85,29 @@ public class clase6 extends clase5 {
         }
     }
 
+    /** Apaga el velocímetro del título: desde esta lección la velocidad vive en el panel. */
+    @Override // Especializa el gancho definido en clase2.
+    protected String textoVelocidad() {
+        return ""; // Sin texto: evita duplicar el valor que ya muestra la fila VEL.
+    }
+
+    /** Libera también la textura de las letras al cerrar la aplicación. */
+    @Override // Añade la limpieza del panel a la de clase1.
+    protected void limpiar() {
+        if (texto != null) { // Solo hace falta si el panel llegó a crearse.
+            texto.liberar(); // Devuelve a la GPU lo que ocupa el texto.
+        }
+        super.limpiar(); // Ejecuta la limpieza original de la ciudad.
+    }
+
     // ==================== 3. FONDO Y FILAS ====================
 
     /** Dibuja las tres filas del panel sobre el fondo oscuro. */
     private void dibujarContenido() {
+        texto.limpiar(); // Borra las letras del cuadro anterior antes de escribir las nuevas.
         caja(0, 30, 0, 110, 1, 110, 0.05f, 0.08f, 0.13f); // Rellena el recuadro; el clear ya lo pintó, la caja lo fija.
-        dibujarTexto("PANEL", -19, -46, PIXEL_LETRA, 0.55f, 0.75f, 0.95f); // Cabecera centrada en azul claro.
+        texto.texto("PANEL", columna(-19), fila(-46), Math.round(TAMANO_PANEL), new Color(140, 191, 242)); // Cabecera en azul
+                                                                                                                // claro.
         dibujarFilaVelocidad(); // Etiqueta VEL, número en km/h y barra proporcional.
         dibujarFilaFaros(); // Etiqueta FAROS con su estado ON u OFF y su lámpara.
         dibujarFilaHora(); // Etiqueta HORA con DIA o NOCHE y su lámpara.
@@ -79,22 +116,25 @@ public class clase6 extends clase5 {
     /** Muestra la velocidad del auto rojo con número y barra de 0 a 16 m/s. */
     private void dibujarFilaVelocidad() {
         int kmh = Math.round(Math.abs(velocidad) * 3.6f); // Misma conversión que el título de clase2.
-        dibujarTexto("VEL " + kmh + " KM/H", -48, -30, PIXEL_LETRA, 1, 1, 1); // Texto blanco con el valor actual.
+        texto.texto("VEL " + kmh + " KM/H", columna(-48), fila(-24), Math.round(TAMANO_TITULO), Color.WHITE); // Texto blanco con
+                                                                                                            // el
+                                                                                                            // valor
+                                                                                                            // actual.
         float fraccion = Math.min(1, Math.abs(velocidad) / 16); // 16 es el tope de avance de clase2.
-        caja(0, 40, -12, 96, 1, 6, 0.25f, 0.28f, 0.33f); // Riel gris de la barra.
+        caja(0, 40, -14, 96, 1, 6, 0.25f, 0.28f, 0.33f); // Riel gris de la barra.
         float rojo = 0.2f + fraccion * 0.8f; // La barra pasa de verde a rojo al acelerar.
         float verde = 0.8f - fraccion * 0.55f; // El verde baja mientras el rojo sube.
         float anchoRelleno = 96 * fraccion; // Ancho proporcional a la velocidad.
         if (anchoRelleno > 0.5f) { // Evita dibujar una lámina invisible en reposo.
             float centroX = -48 + anchoRelleno / 2; // Alinea el relleno a la izquierda del riel.
-            caja(centroX, 41, -12, anchoRelleno, 1, 4, rojo, verde, 0.25f); // Relleno de color según la fracción.
+            caja(centroX, 41, -14, anchoRelleno, 1, 4, rojo, verde, 0.25f); // Relleno de color según la fracción.
         }
     }
 
     /** Muestra FAROS ON u OFF con una lámpara que se enciende en cálido. */
     private void dibujarFilaFaros() {
         String estado = faros ? "ON" : "OFF"; // faros viene de clase3 y cambia con la tecla F.
-        dibujarTexto("FAROS " + estado, -48, 0, PIXEL_LETRA, 1, 1, 1); // Texto blanco con el estado real.
+        texto.texto("FAROS " + estado, columna(-48), fila(8), Math.round(TAMANO_TITULO), Color.WHITE); // Base 4 abajo del centro: el medio de la letra queda a la altura de la lampara (z = 4).
         caja(39, 42, 4, 11, 1, 11, 0.25f, 0.28f, 0.33f); // Aro gris detrás de la lámpara.
         if (faros) { // Faros encendidos: lámpara cálida brillante.
             caja(39, 43, 4, 8, 1, 8, 1, 0.9f, 0.5f); // Amarillo cálido como los faros del auto.
@@ -106,7 +146,7 @@ public class clase6 extends clase5 {
     /** Muestra HORA DIA o NOCHE con una lámpara de sol o de luna. */
     private void dibujarFilaHora() {
         String momento = noche ? "NOCHE" : "DIA"; // noche viene de clase3 y cambia con la tecla N.
-        dibujarTexto("HORA " + momento, -48, 22, PIXEL_LETRA, 1, 1, 1); // Texto blanco con el momento real.
+        texto.texto("HORA " + momento, columna(-48), fila(30), Math.round(TAMANO_TITULO), Color.WHITE); // Base 4 abajo del centro: el medio de la letra queda a la altura de la lampara (z = 26).
         caja(39, 42, 26, 11, 1, 11, 0.25f, 0.28f, 0.33f); // Aro gris detrás de la lámpara.
         if (noche) { // De noche: lámpara azul de luna.
             caja(39, 43, 26, 8, 1, 8, 0.3f, 0.5f, 1); // Azul frío.
@@ -115,142 +155,22 @@ public class clase6 extends clase5 {
         }
     }
 
-    // ==================== 4. TEXTO CON CAJAS ====================
+    // ==================== 4. CONVERSIÓN DE COORDENADAS ====================
 
-    /**
-     * Dibuja una cadena con la fuente 5x7 a partir de su esquina superior
-     * izquierda.
+    /*
+     * El fondo y las lámparas se dibujan con cajas, que usan el sistema del panel: X y Z van de -LIMITE a
+     * +LIMITE. Las letras se dibujan con Texto2D, que usa píxeles de pantalla. Estas dos funciones son el
+     * puente entre ambos sistemas y evitan tener que rehacer el panel entero en píxeles.
      */
-    private void dibujarTexto(String texto, float x0, float z0, float pixel, float r, float g, float b) {
-        float cursorX = x0; // Posición horizontal del carácter actual.
-        for (int indice = 0; indice < texto.length(); indice++) { // Recorre la cadena letra por letra.
-            char letra = texto.charAt(indice); // Carácter actual.
-            if (letra == ' ') { // El espacio solo avanza el cursor.
-                cursorX += 6 * pixel; // Ancho de un carácter 5x7 más su separación.
-                continue; // Pasa a la siguiente letra.
-            }
-            boolean[][] puntos = glifo(letra); // Matriz de 7 filas por 5 columnas.
-            int ancho = puntos[0].length; // Todas las letras usan 5 columnas.
-            for (int fila = 0; fila < puntos.length; fila++) { // Recorre las filas de arriba a abajo.
-                for (int columna = 0; columna < ancho; columna++) { // Recorre las columnas de la letra.
-                    if (!puntos[fila][columna]) { // Punto apagado de la fuente.
-                        continue; // No dibuja nada en esa celda.
-                    }
-                    float px = cursorX + columna * pixel; // X del punto dentro del carácter.
-                    float pz = z0 + fila * pixel; // Z del punto; hacia abajo en el panel.
-                    caja(px, ALTURA_TEXTO, pz, pixel * 0.92f, 0.6f, pixel * 0.92f, r, g, b); // Punto del carácter.
-                }
-            }
-            cursorX += (ancho + 1) * pixel; // Avanza según el ancho real más su separación.
-        }
+
+    /** Convierte una X del panel al píxel de pantalla equivalente, contando desde la izquierda. */
+    private int columna(float xMundo) {
+        return Math.round((xMundo + LIMITE) / (2f * LIMITE) * ladoPanel);
     }
 
-    /**
-     * Devuelve la matriz 7x5 de una letra o dígito. La N usa diagonal
-     * progresiva así: X...X / XX..X / XX..X / X.X.X / X..XX / X..XX / X...X.
-     * Solo cambia el dibujo de las letras del panel; la ciudad queda igual.
-     */
-    private static boolean[][] glifo(char letra) {
-        String[] filas; // Siete cadenas de cinco caracteres con X encendido y . apagado.
-        switch (Character.toUpperCase(letra)) { // Acepta minúsculas aunque el panel usa mayúsculas.
-            case 'A':
-                filas = new String[] { ".XXX.", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X" };
-                break;
-            case 'C':
-                filas = new String[] { ".XXXX", "X....", "X....", "X....", "X....", "X....", ".XXXX" };
-                break;
-            case 'D':
-                filas = new String[] { "XXX..", "X..X.", "X...X", "X...X", "X...X", "X..X.", "XXX.." };
-                break;
-            case 'E':
-                filas = new String[] { "XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "XXXXX" };
-                break;
-            case 'F':
-                filas = new String[] { "XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "X...." };
-                break;
-            case 'H':
-                filas = new String[] { "X...X", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X" };
-                break;
-            case 'I':
-                filas = new String[] { "XXXXX", "..X..", "..X..", "..X..", "..X..", "..X..", "XXXXX" };
-                break;
-            case 'K':
-                filas = new String[] { "X...X", "X..X.", "X.X..", "XX...", "X.X..", "X..X.", "X...X" };
-                break;
-            case 'L':
-                filas = new String[] { "X....", "X....", "X....", "X....", "X....", "X....", "XXXXX" };
-                break;
-            case 'M':
-                filas = new String[] { "X...X", "XX.XX", "X.X.X", "X.X.X", "X...X", "X...X", "X...X" };
-                break;
-            case 'N':
-                filas = new String[] { "X...X", "XX..X", "XX..X", "X.X.X", "X..XX", "X..XX", "X...X" };
-                break;
-            case 'O':
-                filas = new String[] { ".XXX.", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX." };
-                break;
-            case 'P':
-                filas = new String[] { "XXXX.", "X...X", "X...X", "XXXX.", "X....", "X....", "X...." };
-                break;
-            case 'R':
-                filas = new String[] { "XXXX.", "X...X", "X...X", "XXXX.", "X.X..", "X..X.", "X...X" };
-                break;
-            case 'S':
-                filas = new String[] { ".XXXX", "X....", "X....", ".XXX.", "....X", "....X", "XXXX." };
-                break;
-            case 'T':
-                filas = new String[] { "XXXXX", "..X..", "..X..", "..X..", "..X..", "..X..", "..X.." };
-                break;
-            case 'U':
-                filas = new String[] { "X...X", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX." };
-                break;
-            case 'V':
-                filas = new String[] { "X...X", "X...X", "X...X", "X...X", "X...X", ".X.X.", "..X.." };
-                break;
-            case '/':
-                filas = new String[] { "....X", "....X", "...X.", "..X..", "..X..", ".X...", "X...." };
-                break;
-            case '0':
-                filas = new String[] { ".XXX.", "X...X", "X..XX", "X.X.X", "XX..X", "X...X", ".XXX." };
-                break;
-            case '1':
-                filas = new String[] { "..X..", ".XX..", "..X..", "..X..", "..X..", "..X..", ".XXXX" };
-                break;
-            case '2':
-                filas = new String[] { ".XXX.", "X...X", "....X", "...X.", "..X..", ".X...", "XXXXX" };
-                break;
-            case '3':
-                filas = new String[] { "XXXX.", "....X", "....X", ".XXX.", "....X", "....X", "XXXX." };
-                break;
-            case '4':
-                filas = new String[] { "...X.", "..XX.", "..XX.", ".X.X.", "XXXXX", "...X.", "...X." };
-                break;
-            case '5':
-                filas = new String[] { "XXXXX", "X....", "X....", "XXXX.", "....X", "....X", "XXXX." };
-                break;
-            case '6':
-                filas = new String[] { ".XXX.", "X....", "X....", "XXXX.", "X...X", "X...X", ".XXX." };
-                break;
-            case '7':
-                filas = new String[] { "XXXXX", "....X", "...X.", "..X..", "..X..", "..X..", "..X.." };
-                break;
-            case '8':
-                filas = new String[] { ".XXX.", "X...X", "X...X", ".XXX.", "X...X", "X...X", ".XXX." };
-                break;
-            case '9':
-                filas = new String[] { ".XXX.", "X...X", "X...X", ".XXXX", "....X", "....X", ".XXX." };
-                break;
-            default:
-                filas = new String[] { "XXXXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX" };
-                break; // Signo raro: bloque lleno.
-        }
-        boolean[][] puntos = new boolean[filas.length][filas[0].length()]; // Matriz de salida con el alto y ancho real.
-        for (int fila = 0; fila < filas.length; fila++) { // Convierte cada cadena en booleanos.
-            for (int columna = 0; columna < filas[0].length(); columna++) { // Revisa todos los puntos de la fila.
-                puntos[fila][columna] = filas[fila].charAt(columna) == 'X'; // X significa punto encendido.
-            }
-        }
-        return puntos; // Devuelve la letra lista para dibujar.
+    /** Convierte una Z del panel al píxel de pantalla equivalente, contando desde arriba. */
+    private int fila(float zMundo) {
+        return Math.round((zMundo + LIMITE) / (2f * LIMITE) * ladoPanel);
     }
 
     /** Punto de entrada de la sexta lección. */

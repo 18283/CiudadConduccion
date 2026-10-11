@@ -472,34 +472,13 @@ public class clase5 extends clase4 {
     }
 
     /**
-     * Construye un auto con el mismo modelo del jugador, pero con carrocería
-     * blanca para que se distinga del auto rojo.
+     * Construye un auto blanco con el mismo modelo del jugador, que dibuja
+     * clase2. No se repite ninguna medida ni ningún bucle: solo se cambian el
+     * origen, la orientación y los colores.
      */
     private void dibujarAutoBlanco(AutoIA auto) {
-        piezaBlanca(auto, 0, 0.65f, 0, 1.65f, 0.55f, 2.6f, 0.97f, 0.97f, 0.98f); // Carrocería blanca.
-        piezaBlanca(auto, 0, 1.12f, 0.12f, 1.3f, 0.55f, 1.25f, 0.72f, 0.79f, 0.83f); // Cabina gris azulada.
-        float[] ladosRuedas = { -0.88f, 0.88f }; // Lados izquierdo y derecho del vehículo.
-        float[] ejesRuedas = { -0.82f, 0.82f }; // Eje delantero y eje trasero.
-        for (float x : ladosRuedas) { // Recorre los dos costados.
-            for (float z : ejesRuedas) { // Recorre los dos ejes.
-                piezaBlanca(auto, x, 0.38f, z, 0.24f, 0.58f, 0.6f, 0.06f, 0.07f, 0.09f); // Rueda oscura.
-            }
-        }
-        float[] ladosFaros = { -0.55f, 0.55f }; // Separación lateral de las luces.
-        for (float x : ladosFaros) { // Repite el dibujo para ambos lados.
-            piezaBlanca(auto, x, 0.68f, -1.32f, 0.38f, 0.2f, 0.07f, 1, 0.95f, 0.65f); // Faro delantero claro.
-            piezaBlanca(auto, x, 0.68f, 1.32f, 0.35f, 0.17f, 0.07f, 0.85f, 0.05f, 0.05f); // Luz trasera roja.
-        }
-    }
-
-    /** Transforma una pieza del espacio local del auto al espacio de la ciudad. */
-    private void piezaBlanca(AutoIA auto, float x, float y, float z, float sx, float sy, float sz, float r, float g,
-            float b) {
-        float coseno = (float) Math.cos(auto.angulo); // Coseno de la orientación de este auto.
-        float seno = (float) Math.sin(auto.angulo); // Seno de la misma orientación.
-        float mundoX = auto.x + coseno * x + seno * z; // Gira la posición local y suma la X del auto.
-        float mundoZ = auto.z - seno * x + coseno * z; // Gira la posición local y suma la Z del auto.
-        cajaGirada(mundoX, y, mundoZ, sx, sy, sz, r, g, b, auto.angulo); // Dibuja la pieza con su orientación.
+        dibujarCarroceria(auto.x, auto.z, auto.angulo, 0.97f, 0.97f, 0.98f, // Carrocería blanca.
+                0.72f, 0.79f, 0.83f); // Cabina gris azulada.
     }
 
     /** Dibuja una marca blanca y su punta para localizar cada auto en el minimapa. */
@@ -514,49 +493,11 @@ public class clase5 extends clase4 {
         }
     }
 
-    // ==================== 8. AYUDANTES DE ÁNGULOS Y LÍMITES ====================
-
-    /** Componente X de la dirección frontal de un vehículo orientado con este ángulo. */
-    private static float componenteFrenteX(float angulo) {
-        return -(float) Math.sin(angulo); // Con ángulo cero el frente apunta hacia -Z.
-    }
-
-    /** Componente Z de la dirección frontal de un vehículo orientado con este ángulo. */
-    private static float componenteFrenteZ(float angulo) {
-        return -(float) Math.cos(angulo); // Con ángulo cero vale -1.
-    }
-
-    /** Componente X del costado derecho, que es el que mira al eje de la calle. */
-    private static float componenteDerechaX(float angulo) {
-        return (float) Math.cos(angulo); // Con ángulo cero el costado derecho mira hacia +X.
-    }
-
-    /** Componente Z del costado derecho, que es el que mira al eje de la calle. */
-    private static float componenteDerechaZ(float angulo) {
-        return -(float) Math.sin(angulo); // Con ángulo cero vale 0.
-    }
-
-    /** Ángulo con el que un vehículo debe mirar de un punto a otro. */
-    private static float anguloHacia(float desdeX, float desdeZ, float hastaX, float hastaZ) {
-        return (float) Math.atan2(-(hastaX - desdeX), -(hastaZ - desdeZ)); // Invierte el vector y usa su dirección.
-    }
-
-    /** Reduce un ángulo al intervalo de -π a π para poder girar por el camino corto. */
-    private static float normalizar(float angulo) {
-        float resultado = angulo % (2 * (float) Math.PI); // Primero lo deja entre -2π y 2π.
-        if (resultado > (float) Math.PI) { // Todavía hay dos caminos posibles hacia el objetivo.
-            resultado -= 2 * (float) Math.PI; // Se elige el giro positivo corto.
-        }
-        if (resultado < -(float) Math.PI) { // El caso simétrico por debajo de -π.
-            resultado += 2 * (float) Math.PI; // Se elige el giro negativo corto.
-        }
-        return resultado; // Devuelve el error de giro ya normalizado.
-    }
-
-    /** Acota un valor entre un mínimo y un máximo. */
-    private static float limitar(float valor, float minimo, float maximo) {
-        return Math.max(minimo, Math.min(maximo, valor)); // Devuelve el valor dentro del intervalo.
-    }
+    /*
+     * Los ángulos de los vehículos (componenteFrenteX, componenteFrenteZ, componenteDerechaX,
+     * componenteDerechaZ, anguloHacia, normalizar y limitar) y el dibujo de un auto (dibujarCarroceria,
+     * pieza y piezaEn) ya no se repiten aquí: son los de clase2 y esta lección los hereda.
+     */
 
     /** Punto de entrada de la quinta lección. */
     public static void main(String[] args) {

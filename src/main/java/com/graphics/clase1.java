@@ -182,7 +182,7 @@ public class clase1 {
     }
 
     /** Libera únicamente los recursos que llegaron a crearse. */
-    private void limpiar() {
+    protected void limpiar() { // Protected para que clase6 libere además los recursos de su panel de texto.
         if (programa != 0) { // Comprueba si existe un programa en la GPU.
             glDeleteProgram(programa); // Libera el programa de shaders.
         }
