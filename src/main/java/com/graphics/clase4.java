@@ -283,18 +283,26 @@ public class clase4 extends clase3 {
         }
     }
 
+        /**
+     * Dibuja una marca orientada y su punta blanca por encima de los edificios del
+     * minimapa. Generaliza el indicador del jugador y las marcas del trafico.
+     */
+    protected void dibujarMarcaMapa(float x, float z, float angulo, float ancho, float largo, float r, float g, float b,
+            float yBase, float distPunta, float tamPunta) {
+        cajaGirada(x, yBase, z, ancho, 0.1f, largo, r, g, b, angulo); // Rectangulo orientado con el frente.
+        float frenteX = componenteFrenteX(angulo); // Direccion frontal en X, heredada de clase2.
+        float frenteZ = componenteFrenteZ(angulo); // Direccion frontal en Z, heredada de clase2.
+        float puntaX = x + frenteX * distPunta; // Desplaza la punta hacia delante en X.
+        float puntaZ = z + frenteZ * distPunta; // Desplaza la punta hacia delante en Z.
+        caja(puntaX, yBase + 1, puntaZ, tamPunta, 0.1f, tamPunta, 1, 1, 1); // Punta blanca encima de la marca.
+    }
+
     /**
      * Dibuja una marca cian y una punta blanca por encima de los edificios del
      * minimapa.
      */
     private void dibujarIndicadorAuto() {
-        cajaGirada(autoX, 25, autoZ, 2.2f, 0.1f, 3.2f, 0.1f, 1, 1, angulo); // Marca la posición con un rectángulo cian
-                                                                            // orientado.
-        float frenteX = -(float) Math.sin(angulo); // Calcula la dirección frontal en el eje X.
-        float frenteZ = -(float) Math.cos(angulo); // Calcula la dirección frontal en el eje Z.
-        float puntaX = autoX + frenteX * 2; // Desplaza la punta dos unidades hacia delante en X.
-        float puntaZ = autoZ + frenteZ * 2; // Desplaza la punta dos unidades hacia delante en Z.
-        caja(puntaX, 26, puntaZ, 0.9f, 0.1f, 0.9f, 1, 1, 1); // Dibuja la punta blanca encima del indicador cian.
+        dibujarMarcaMapa(autoX, autoZ, angulo, 2.2f, 3.2f, 0.1f, 1, 1, 25, 2, 0.9f); // Jugador en cian.
     }
 
     /** Punto de entrada del proyecto final. */

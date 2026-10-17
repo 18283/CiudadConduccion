@@ -27,7 +27,8 @@ public class clase7 extends clase6 {
 
     private boolean enMenu = true; // true: muestra menu y bloquea conduccion; false: juega normal.
 
-    private Texto2D menuTexto; // Lienzo de letras con fuente real; se crea en el primer cuadro con contexto OpenGL.
+    private Texto2D menuTexto; // Lienzo de letras con fuente real; se crea en el primer cuadro con contexto
+                               // OpenGL.
 
     // ==================== 2. TECLADO ====================
 
@@ -63,7 +64,7 @@ public class clase7 extends clase6 {
             super.actualizar(0); // Refresca el titulo con los controles de conduccion.
             return;
         }
-        glfwSetWindowTitle(ventana, "Clase 7 | MENU"); // Título fijo en el menú; la orden ya está dentro del recuadro.
+        glfwSetWindowTitle(ventana, "Clase 7 | MENU | C = Camara aerea"); // Título fijo en el menú; la orden ya está dentro del recuadro.
     }
 
     // ==================== 4. RECUADRO CENTRAL ====================
@@ -139,14 +140,16 @@ public class clase7 extends clase6 {
         int comenzar = Math.max(16, menuH / 13); // COMENZAR mediano: 40 px al máximo.
         int salir = Math.max(14, menuH / 17); // SALIR más chico: 31 px al máximo.
         Color azul = new Color(140, 191, 242); // Mismo azul claro del título del panel.
-        menuTexto.textoCentrado("DELIVERY", menuW / 2, baseMenu(-38, menuH, titulo), titulo, azul); // Título azul claro.
+        menuTexto.textoCentrado("DELIVERY", menuW / 2, baseMenu(-38, menuH, titulo), titulo, azul); // Título azul
+                                                                                                    // claro.
         menuTexto.textoCentrado("EN LA CIUDAD", menuW / 2, baseMenu(-20, menuH, subtitulo), subtitulo, azul); // Segunda
-                                                                                                             // parte.
+                                                                                                              // parte.
         if ((tiempo % 1.0f) < 0.7f) { // Parpadea cada segundo para llamar la atención.
             menuTexto.textoCentrado("COMENZAR -> W o ^", menuW / 2, baseMenu(6, menuH, comenzar), comenzar,
                     Color.WHITE); // Orden blanca para empezar.
         }
-        menuTexto.textoCentrado("SALIR -> ESC", menuW / 2, baseMenu(24, menuH, salir), salir, Color.WHITE); // Aviso fijo.
+        menuTexto.textoCentrado("SALIR -> ESC", menuW / 2, baseMenu(24, menuH, salir), salir, Color.WHITE); // Aviso
+                                                                                                            // fijo.
     }
 
     /**

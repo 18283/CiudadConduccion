@@ -207,8 +207,10 @@ public class clase2 extends clase1 {
      *
      * <p>
      * El modelo del vehículo no se escribe aquí: se delega en
-     * {@link #dibujarCarroceria(float, float, float, float, float, float, float, float, float)} indicando
-     * dónde está el auto y de qué color es. Así las lecciones siguientes que dibujen más vehículos
+     * {@link #dibujarCarroceria(float, float, float, float, float, float, float, float, float)}
+     * indicando
+     * dónde está el auto y de qué color es. Así las lecciones siguientes que
+     * dibujen más vehículos
      * reutilizan exactamente la misma geometría en vez de copiarla.
      */
     protected void dibujarAuto() {
@@ -217,9 +219,12 @@ public class clase2 extends clase1 {
     }
 
     /**
-     * Construye un auto con cajas a partir de su origen, su orientación y los colores de carrocería y
-     * cabina. Las medidas son las del modelo del jugador, de modo que todos los vehículos de la ciudad
-     * miden lo mismo: carrocería, cabina, cuatro ruedas y los dos faros con su luz trasera.
+     * Construye un auto con cajas a partir de su origen, su orientación y los
+     * colores de carrocería y
+     * cabina. Las medidas son las del modelo del jugador, de modo que todos los
+     * vehículos de la ciudad
+     * miden lo mismo: carrocería, cabina, cuatro ruedas y los dos faros con su luz
+     * trasera.
      */
     protected void dibujarCarroceria(float origenX, float origenZ, float angulo, float cuerpoR, float cuerpoG,
             float cuerpoB, float cabinaR, float cabinaG, float cabinaB) {
@@ -239,24 +244,29 @@ public class clase2 extends clase1 {
         for (float x : ladosFaros) { // Repite el dibujo para ambos lados.
             piezaEn(origenX, origenZ, angulo, x, 0.68f, -1.32f, 0.38f, 0.2f, 0.07f, 1, 0.95f, 0.65f); // Faro delantero.
             piezaEn(origenX, origenZ, angulo, x, 0.68f, 1.32f, 0.35f, 0.17f, 0.07f, 0.85f, 0.05f, 0.05f); // Luz trasera
-                                                                                                         // roja.
+                                                                                                          // roja.
         }
     }
 
     /**
-     * Transforma una pieza del espacio local del auto del jugador al espacio de la ciudad.
+     * Transforma una pieza del espacio local del auto del jugador al espacio de la
+     * ciudad.
      *
      * <p>
-     * Es un caso particular de {@link #piezaEn}: el origen y la orientación son los del auto rojo.
+     * Es un caso particular de {@link #piezaEn}: el origen y la orientación son los
+     * del auto rojo.
      */
     protected void pieza(float x, float y, float z, float sx, float sy, float sz, float r, float g, float b) {
         piezaEn(autoX, autoZ, angulo, x, y, z, sx, sy, sz, r, g, b); // Delega con la pose del auto del jugador.
     }
 
     /**
-     * Transforma una pieza definida en el espacio local de un vehículo cualquiera al espacio de la
-     * ciudad, girando la pieza con la orientación de ese vehículo y trasladándola a su posición. Es el
-     * único lugar del proyecto donde se hace esta conversión, de modo que cualquier vehículo nuevo se
+     * Transforma una pieza definida en el espacio local de un vehículo cualquiera
+     * al espacio de la
+     * ciudad, girando la pieza con la orientación de ese vehículo y trasladándola a
+     * su posición. Es el
+     * único lugar del proyecto donde se hace esta conversión, de modo que cualquier
+     * vehículo nuevo se
      * dibuja reutilizándolo.
      */
     protected void piezaEn(float origenX, float origenZ, float angulo, float x, float y, float z, float sx, float sy,
@@ -266,24 +276,33 @@ public class clase2 extends clase1 {
         float mundoX = origenX + coseno * x + seno * z; // Gira la posición local y suma la X del vehículo.
         float mundoZ = origenZ - seno * x + coseno * z; // Gira la posición local y suma la Z del vehículo.
         cajaGirada(mundoX, y, mundoZ, sx, sy, sz, r, g, b, angulo); // Dibuja la pieza con la orientación del
-                                                                       // vehículo.
+                                                                    // vehículo.
     }
 
     // ==================== 7. AYUDANTES DE POSE Y LÍMITES ====================
 
     /*
-     * Estas cuatro funciones dicen hacia dónde mira un vehículo y cuál es su costado derecho con una
-     * sola orientación. Se calculan aquí una vez y se reutilizan en todas partes: en el movimiento de
-     * este mismo auto, en las luces de clase3 y en el tráfico autónomo de clase5, que necesita además
+     * Estas cuatro funciones dicen hacia dónde mira un vehículo y cuál es su
+     * costado derecho con una
+     * sola orientación. Se calculan aquí una vez y se reutilizan en todas partes:
+     * en el movimiento de
+     * este mismo auto, en las luces de clase3 y en el tráfico autónomo de clase5,
+     * que necesita además
      * girar según el error de orientación.
      */
 
-    /** Componente X de la dirección frontal de un vehículo orientado con este ángulo. */
+    /**
+     * Componente X de la dirección frontal de un vehículo orientado con este
+     * ángulo.
+     */
     protected static float componenteFrenteX(float angulo) {
         return -(float) Math.sin(angulo); // Con ángulo cero el frente apunta hacia -Z.
     }
 
-    /** Componente Z de la dirección frontal de un vehículo orientado con este ángulo. */
+    /**
+     * Componente Z de la dirección frontal de un vehículo orientado con este
+     * ángulo.
+     */
     protected static float componenteFrenteZ(float angulo) {
         return -(float) Math.cos(angulo); // Con ángulo cero vale -1.
     }
@@ -303,7 +322,9 @@ public class clase2 extends clase1 {
         return (float) Math.atan2(-(hastaX - desdeX), -(hastaZ - desdeZ)); // Invierte el vector y usa su dirección.
     }
 
-    /** Reduce un ángulo al intervalo de -π a π para poder girar por el camino corto. */
+    /**
+     * Reduce un ángulo al intervalo de -π a π para poder girar por el camino corto.
+     */
     protected static float normalizar(float angulo) {
         float resultado = angulo % (2 * (float) Math.PI); // Primero lo deja entre -2π y 2π.
         if (resultado > (float) Math.PI) { // Todavía hay dos caminos posibles hacia el objetivo.

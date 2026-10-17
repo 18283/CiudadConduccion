@@ -20,28 +20,40 @@ import static org.lwjgl.opengl.GL30.*; // Vincula el VAO durante el dibujo.
  * TEXTO EN 2D CON FUENTE DEL SISTEMA.
  *
  * <p>
- * Sustituye a las letras formadas con cajas pequeñas, que se veían pixeladas porque cada punto de
- * la fuente 5x7 era un cubo sin suavizado. Ahora el texto se dibuja en memoria con
- * {@link Graphics2D}, que aplica el suavizado de curvas y bordes de una fuente real del sistema, y
- * después se sube a la GPU como textura transparente que se coloca encima del panel.
+ * Sustituye a las letras formadas con cajas pequeñas, que se veían pixeladas
+ * porque cada punto de
+ * la fuente 5x7 era un cubo sin suavizado. Ahora el texto se dibuja en memoria
+ * con
+ * {@link Graphics2D}, que aplica el suavizado de curvas y bordes de una fuente
+ * real del sistema, y
+ * después se sube a la GPU como textura transparente que se coloca encima del
+ * panel.
  *
  * <p>
- * Para que siga nitido aunque la textura sea más grande que el rectángulo que ocupa en pantalla, la
- * imagen se dibuja al doble ({@link #SUPER}) y se filtra con mipmaps, de modo que la GPU reduce el
+ * Para que siga nitido aunque la textura sea más grande que el rectángulo que
+ * ocupa en pantalla, la
+ * imagen se dibuja al doble ({@link #SUPER}) y se filtra con mipmaps, de modo
+ * que la GPU reduce el
  * tamaño promediando en vez de tomar muestras sueltas.
  *
  * <p>
- * Solo se vuelve a generar y subir la textura cuando el texto escrito cambia: si en dos cuadros
+ * Solo se vuelve a generar y subir la textura cuando el texto escrito cambia:
+ * si en dos cuadros
  * seguidos se dibuja exactamente lo mismo, la GPU no recibe nada nuevo.
  *
  * <p>
- * Coordenadas: {@link #texto} trabaja en píxeles con el origen arriba a la izquierda, igual que
- * cualquier lienzo de Java; {@link #dibujar} recibe la esquina del rectángulo en píxeles de pantalla
+ * Coordenadas: {@link #texto} trabaja en píxeles con el origen arriba a la
+ * izquierda, igual que
+ * cualquier lienzo de Java; {@link #dibujar} recibe la esquina del rectángulo
+ * en píxeles de pantalla
  * medidos desde abajo a la izquierda, que es como los mide OpenGL.
  */
 public class Texto2D {
 
-    /** Factor de supermuestreo: la imagen del texto tiene el doble de lado que el rectángulo. */
+    /**
+     * Factor de supermuestreo: la imagen del texto tiene el doble de lado que el
+     * rectángulo.
+     */
     private static final int SUPER = 2;
 
     private int programa; // Shader propio del texto: no comparte estado con el de la ciudad.
@@ -52,7 +64,8 @@ public class Texto2D {
     private int uResolucion; // Uniform con el tamaño de la ventana para proyectar a normalizado.
 
     private int anchoRect; // Ancho en píxeles de pantalla del rectángulo que ocupa el texto.
-    private int altoRect; // Alto en píxeles de pantalla del mismo rectángulo (en el panel es igual al ancho).
+    private int altoRect; // Alto en píxeles de pantalla del mismo rectángulo (en el panel es igual al
+                          // ancho).
     private BufferedImage imagen; // Lienzo en memoria donde Java dibuja las letras.
     private Graphics2D lienzo; // Pincel asociado a esa imagen.
     private int[] pixeles; // Copia plana de la imagen que se envía a la GPU.
@@ -61,7 +74,8 @@ public class Texto2D {
     private String enviado = null; // Texto que ya está en la GPU.
 
     /**
-     * Crea el shader, el quad y la textura. Solo puede llamarse con un contexto OpenGL ya activo,
+     * Crea el shader, el quad y la textura. Solo puede llamarse con un contexto
+     * OpenGL ya activo,
      * es decir desde dentro del ciclo de dibujo.
      */
     public Texto2D() {
@@ -73,7 +87,8 @@ public class Texto2D {
     // ==================== 1. ESCRIBIR SOBRE LA IMAGEN ====================
 
     /**
-     * Prepara el lienzo para un recuadro de {@code ladoNuevo} píxeles de pantalla. Si el tamaño no ha
+     * Prepara el lienzo para un recuadro de {@code ladoNuevo} píxeles de pantalla.
+     * Si el tamaño no ha
      * cambiado no hace nada, así que se puede llamar en cada cuadro sin coste.
      */
     public void redimensionar(int ladoNuevo) {
@@ -81,7 +96,8 @@ public class Texto2D {
     }
 
     /**
-     * Prepara el lienzo para un rectángulo de ancho por alto en píxeles de pantalla.
+     * Prepara el lienzo para un rectángulo de ancho por alto en píxeles de
+     * pantalla.
      * El menú lo usa porque su recuadro es más ancho que alto.
      */
     public void redimensionar(int anchoNuevo, int altoNuevo) {
@@ -98,12 +114,12 @@ public class Texto2D {
         imagen = new BufferedImage(anchoImagen, altoImagen, BufferedImage.TYPE_INT_ARGB); // Lienzo con canal alfa.
         lienzo = imagen.createGraphics(); // Crea el pincel 2D sobre ese lienzo.
         lienzo.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON); // Suaviza
-                                                                                                          // las
-                                                                                                          // curvas
-                                                                                                          // de las
-                                                                                                          // letras.
+        // las
+        // curvas
+        // de las
+        // letras.
         lienzo.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON); // Suaviza los
-                                                                                                        // bordes.
+                                                                                                     // bordes.
         pixeles = new int[anchoImagen * altoImagen]; // Reserva la copia plana de la imagen.
         transporte = BufferUtils.createByteBuffer(pixeles.length * 4); // Reserva el buffer nativo del tamaño exacto.
         transporte.order(ByteOrder.LITTLE_ENDIAN); // Hace que OpenGL lea los bytes en el orden RGBA que espera.
@@ -123,9 +139,12 @@ public class Texto2D {
     }
 
     /**
-     * Escribe una línea de texto en píxeles. La X es el borde izquierdo y la Y es la línea base, igual
-     * que en Java: la letra queda por encima de esa Y y su caja alta sube unas decenas de puntos. El
-     * lienzo es transparente, así que el texto se mezcla con lo que ya estuviera dibujado debajo.
+     * Escribe una línea de texto en píxeles. La X es el borde izquierdo y la Y es
+     * la línea base, igual
+     * que en Java: la letra queda por encima de esa Y y su caja alta sube unas
+     * decenas de puntos. El
+     * lienzo es transparente, así que el texto se mezcla con lo que ya estuviera
+     * dibujado debajo.
      */
     public void texto(String cadena, int x, int y, int tamano, Color color) {
         if (lienzo == null) { // Sin lienzo no hay nada donde escribir.
@@ -137,23 +156,33 @@ public class Texto2D {
         contenido.append(cadena).append('\n'); // Anota qué se ha escrito para saber si hay que subirlo.
     }
 
-    /** Igual que {@link #texto}, pero centra la cadena horizontalmente sobre {@code centroX}. */
+    /**
+     * Igual que {@link #texto}, pero centra la cadena horizontalmente sobre
+     * {@code centroX}.
+     */
     public void textoCentrado(String cadena, int centroX, int y, int tamano, Color color) {
-        texto(cadena, centroX - anchoDe(cadena, tamano) / 2, y, tamano, color); // La desplaza media cadena a la izquierda.
+        texto(cadena, centroX - anchoDe(cadena, tamano) / 2, y, tamano, color); // La desplaza media cadena a la
+                                                                                // izquierda.
     }
 
-    /** Ancho en píxeles de pantalla que ocupará una cadena con ese tamaño de fuente. */
+    /**
+     * Ancho en píxeles de pantalla que ocupará una cadena con ese tamaño de fuente.
+     */
     public int anchoDe(String cadena, int tamano) {
         if (lienzo == null) { // Sin lienzo todavía no se puede medir con Java2D.
             return cadena.length() * tamano; // Una estimación razonable mientras no exista imagen.
         }
-        return Math.round(lienzo.getFontMetrics(fuente(tamano)).stringWidth(cadena) / (float) SUPER); // Mide con la misma
-                                                                                                       // fuente
-                                                                                                       // que
-                                                                                                       // escribe.
+        return Math.round(lienzo.getFontMetrics(fuente(tamano)).stringWidth(cadena) / (float) SUPER); // Mide con la
+                                                                                                      // misma
+                                                                                                      // fuente
+                                                                                                      // que
+                                                                                                      // escribe.
     }
 
-    /** Construye la fuente que se usa para un tamaño dado, ya escalada por el supermuestreo. */
+    /**
+     * Construye la fuente que se usa para un tamaño dado, ya escalada por el
+     * supermuestreo.
+     */
     private static Font fuente(int tamano) {
         return new Font(Font.SANS_SERIF, Font.BOLD, Math.max(1, Math.round(tamano * SUPER))); // Misma en todo el flujo.
     }
@@ -161,12 +190,16 @@ public class Texto2D {
     // ==================== 2. PASAR LA IMAGEN A LA GPU ====================
 
     /**
-     * Sube la imagen a la textura si hace falta y la dibuja dentro del rectángulo indicado.
+     * Sube la imagen a la textura si hace falta y la dibuja dentro del rectángulo
+     * indicado.
      *
-     * @param x             esquina izquierda del rectángulo, en píxeles desde la izquierda de la ventana.
-     * @param y             esquina inferior del rectángulo, en píxeles desde abajo de la ventana.
-     * @param anchoVentana  ancho de la ventana en píxeles, para convertir a coordenadas normalizadas.
-     * @param altoVentana   alto de la ventana en píxeles, idem para el eje vertical.
+     * @param x            esquina izquierda del rectángulo, en píxeles desde la
+     *                     izquierda de la ventana.
+     * @param y            esquina inferior del rectángulo, en píxeles desde abajo
+     *                     de la ventana.
+     * @param anchoVentana ancho de la ventana en píxeles, para convertir a
+     *                     coordenadas normalizadas.
+     * @param altoVentana  alto de la ventana en píxeles, idem para el eje vertical.
      */
     public void dibujar(int x, int y, int anchoVentana, int altoVentana) {
         if (lienzo == null || anchoRect <= 0 || altoRect <= 0) { // Todavía no hay nada que enseñar.
@@ -217,9 +250,10 @@ public class Texto2D {
         }
         transporte.flip(); // Marca que el buffer ya tiene todos los píxeles escritos.
         glBindTexture(GL_TEXTURE_2D, textura); // Enlaza la textura del texto.
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ladoImagen, altoImagen, 0, GL_RGBA, GL_UNSIGNED_BYTE, transporte); // Sube la
-                                                                                                             // imagen
-                                                                                                             // completa.
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ladoImagen, altoImagen, 0, GL_RGBA, GL_UNSIGNED_BYTE, transporte); // Sube
+                                                                                                                   // la
+        // imagen
+        // completa.
         glGenerateMipmap(GL_TEXTURE_2D); // Crea la versión reducida que evita el pixelado al pintar más pequeña.
         glBindTexture(GL_TEXTURE_2D, 0); // Suelta la textura.
     }
@@ -228,7 +262,8 @@ public class Texto2D {
     private void crearTextura() {
         textura = glGenTextures(); // Pide un identificador de textura.
         glBindTexture(GL_TEXTURE_2D, textura); // Enlaza la textura recién creada.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Al reducir, promedia los niveles.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Al reducir, promedia los
+                                                                                        // niveles.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Al ampliar, interpola sin escalones.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // No repite en horizontal.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // No repite en vertical.
@@ -237,7 +272,10 @@ public class Texto2D {
 
     // ==================== 3. QUAD Y SHADERS ====================
 
-    /** Crea el quad de pantalla con coordenadas de 0 a 1 y sus coordenadas de textura. */
+    /**
+     * Crea el quad de pantalla con coordenadas de 0 a 1 y sus coordenadas de
+     * textura.
+     */
     private void crearQuad() {
         float[] vertices = { // Dos triángulos que cubren todo el rectángulo; la V se invierte porque la
                              // primera fila de la imagen es la de arriba.
@@ -262,24 +300,28 @@ public class Texto2D {
         glBindVertexArray(anterior[0]); // Devuelve el VAO de la ciudad: el panel se dibuja en medio de su pase.
     }
 
-    /** Compila y enlaza el par de shaders que coloca la imagen del texto sobre el panel. */
+    /**
+     * Compila y enlaza el par de shaders que coloca la imagen del texto sobre el
+     * panel.
+     */
     private void crearPrograma() {
-        int vs = compilar(GL_VERTEX_SHADER, """
-                #version 330 core // GLSL 3.30, el mismo perfil que usa el proyecto.
-                layout (location = 0) in vec2 aPos; // Posición del quad, de 0 a 1.
-                layout (location = 1) in vec2 aUv; // Coordenada de la textura del texto.
-                uniform vec4 uRect; // Posición y tamaño del rectángulo en píxeles.
-                uniform vec2 uResolucion; // Tamaño de la ventana en píxeles.
-                out vec2 vUv; // Pasa la coordenada de textura al fragmento.
-                void main() { // Coloca el quad en pantalla.
-                    vec2 p = uRect.xy + aPos * uRect.zw; // Lleva el vértice a píxeles de pantalla.
-                    vec2 ndc = vec2(p.x / uResolucion.x * 2.0 - 1.0, p.y / uResolucion.y * 2.0 - 1.0); // Pasa a
-                                                                                                                                  // coordenadas
-                                                                                                                                  // normalizadas.
-                    gl_Position = vec4(ndc, 0.0, 1.0); // Publica la posición sin perspectiva.
-                    vUv = aUv; // Entrega la coordenada de textura.
-                }
-                """); // Compila el shader de vértices.
+        int vs = compilar(GL_VERTEX_SHADER,
+                """
+                        #version 330 core // GLSL 3.30, el mismo perfil que usa el proyecto.
+                        layout (location = 0) in vec2 aPos; // Posición del quad, de 0 a 1.
+                        layout (location = 1) in vec2 aUv; // Coordenada de la textura del texto.
+                        uniform vec4 uRect; // Posición y tamaño del rectángulo en píxeles.
+                        uniform vec2 uResolucion; // Tamaño de la ventana en píxeles.
+                        out vec2 vUv; // Pasa la coordenada de textura al fragmento.
+                        void main() { // Coloca el quad en pantalla.
+                            vec2 p = uRect.xy + aPos * uRect.zw; // Lleva el vértice a píxeles de pantalla.
+                            vec2 ndc = vec2(p.x / uResolucion.x * 2.0 - 1.0, p.y / uResolucion.y * 2.0 - 1.0); // Pasa a
+                                                                                                                                          // coordenadas
+                                                                                                                                          // normalizadas.
+                            gl_Position = vec4(ndc, 0.0, 1.0); // Publica la posición sin perspectiva.
+                            vUv = aUv; // Entrega la coordenada de textura.
+                        }
+                        """); // Compila el shader de vértices.
         int fs = compilar(GL_FRAGMENT_SHADER, """
                 #version 330 core // GLSL 3.30, el mismo perfil que usa el proyecto.
                 in vec2 vUv; // Coordenada recibida del shader de vértices.
@@ -314,6 +356,7 @@ public class Texto2D {
 
     /** Libera la textura, el quad y el programa cuando la aplicación termina. */
     public void liberar() {
+
         if (textura != 0) { // Si llegó a crearse la textura.
             glDeleteTextures(textura); // Se libera de la GPU.
         }
