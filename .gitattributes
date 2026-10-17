@@ -1,0 +1,9 @@
+# Documentos binarios: se guardan byte a byte, sin conversiones de fin de línea.
+# Evita que un PDF se corrompa o se vea en blanco tras subirlo.
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
